@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA SEMS - RIA Dashboard v7</title>
+    <title>SISTEMA SEMS - RIA Dashboard v5</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
@@ -18,30 +16,25 @@
         .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.1); }
         .stat-card { border-left: 4px solid var(--tierra); }
         .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 999; align-items: center; justify-content: center; color: white; flex-direction: column; }
-        .badge-atencion { background: #1e293b; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="min-h-screen pb-12">
 
     <div id="loader" class="loading-overlay font-bold">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-amber-500 mb-4"></div>
-        <span class="text-xl tracking-widest uppercase">Actualizando Panel de Docentes...</span>
+        <span class="text-xl tracking-widest uppercase" id="loader-text">Procesando Datos Académicos...</span>
     </div>
 
     <header class="bg-[#0f172a] text-white p-6 shadow-2xl mb-6">
         <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tighter uppercase">Sistema SEMS <span class="text-amber-500 italic">RIA</span></h1>
-                <p class="text-[10px] tracking-[0.4em] text-stone-400 font-light">PANEL DE SEGUIMIENTO DOCENTE Y ATENCIÓN</p>
+                <h1 class="text-3xl font-extrabold tracking-tighter uppercase">Sistema COBAED <span class="text-amber-500 italic">RIA-1 semestre 2026B</span></h1>
+                <p class="text-[10px] tracking-[0.4em] text-stone-400">Sistema de Control para Seguimiento PROFESIONAL</p>
             </div>
             <div class="flex flex-wrap gap-2 justify-center">
                 <input type="file" id="fileInput" class="hidden" accept=".csv, .xlsx">
-                <button onclick="document.getElementById('fileInput').click()" class="bg-stone-700 hover:bg-stone-600 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md">CARGAR DATOS</button>
-                <button onclick="exportToExcel()" class="bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md">EXCEL</button>
-                <button onclick="exportToPDF()" class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md">PDF REPORTE</button>
-                <button onclick="clearDatabase()" class="bg-red-900/40 hover:bg-red-800 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-red-700/50">LIMPIAR</button>
+                <button onclick="document.getElementById('fileInput').click()" class="bg-stone-700 hover:bg-stone-600 px-4 py-2 rounded-lg text-xs font-bold transition-all">ACTUALIZAR INFO</button>
+                <button onclick="clearDatabase()" class="bg-red-900/40 hover:bg-red-800 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-red-700/50">LIMPIAR CACHÉ</button>
             </div>
         </div>
     </header>
@@ -49,7 +42,7 @@
     <main class="max-w-[1600px] mx-auto px-4">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="glass p-5 rounded-2xl stat-card shadow-sm"><p class="text-[10px] font-bold text-stone-500 uppercase">Alumnos Únicos</p><h2 id="stat-alumnos" class="text-3xl font-black text-slate-800">0</h2></div>
-            <div class="glass p-5 rounded-2xl stat-card shadow-sm"><p class="text-[10px] font-bold text-stone-500 uppercase">Registros Totales</p><h2 id="stat-registros" class="text-3xl font-black text-slate-800">0</h2></div>
+            <div class="glass p-5 rounded-2xl stat-card shadow-sm"><p class="text-[10px] font-bold text-stone-500 uppercase">Registros en Vista</p><h2 id="stat-registros" class="text-3xl font-black text-slate-800">0</h2></div>
             <div class="glass p-5 rounded-2xl stat-card shadow-sm"><p class="text-[10px] font-bold text-stone-500 uppercase">Planteles</p><h2 id="stat-planteles" class="text-3xl font-black text-slate-800">0</h2></div>
             <div class="glass p-5 rounded-2xl stat-card shadow-sm"><p class="text-[10px] font-bold text-stone-500 uppercase">Promedio Global</p><h2 id="stat-promedio" class="text-3xl font-black text-emerald-700">0.0</h2></div>
         </div>
@@ -57,10 +50,10 @@
         <section class="glass rounded-2xl p-6 mb-6 shadow-sm border border-stone-200">
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div><label class="block text-[9px] font-bold text-stone-400 mb-1">PLANTEL</label><select id="f-plantel" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
-                <div><label class="block text-[9px] font-bold text-stone-400 mb-1">SEM.</label><select id="f-semestre" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
-                <div><label class="block text-[9px] font-bold text-stone-400 mb-1">DOCENTE</label><select id="f-docente" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
+                <div><label class="block text-[9px] font-bold text-stone-400 mb-1">SEMESTRE</label><select id="f-semestre" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
+                <div><label class="block text-[9px] font-bold text-stone-400 mb-1">MATERIA</label><select id="f-materia" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
                 <div><label class="block text-[9px] font-bold text-stone-400 mb-1">TURNO</label><select id="f-turno" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
-                <div><label class="block text-[9px] font-bold text-stone-400 mb-1">TIPO</label><select id="f-tipo" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
+                <div><label class="block text-[9px] font-bold text-stone-400 mb-1">TIPO ALUMNO</label><select id="f-tipo" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
                 <div><label class="block text-[9px] font-bold text-stone-400 mb-1">SECTOR</label><select id="f-sector" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none"></select></div>
                 <div><label class="block text-[9px] font-bold text-stone-400 mb-1">SEMÁFORO</label>
                     <select id="f-semaforo" onchange="applyFilters()" class="w-full bg-stone-50 border p-2 rounded-lg text-xs font-bold outline-none">
@@ -78,35 +71,12 @@
             <div class="glass p-4 rounded-2xl h-60 md:col-span-2" id="chart-rangos"></div>
             <div class="glass p-4 rounded-2xl h-60 md:col-span-2" id="chart-ranking"></div>
         </div>
-
-        <div class="glass rounded-2xl overflow-hidden shadow-sm border border-stone-200">
-            <div class="overflow-y-auto max-h-[600px]">
-                <table class="w-full text-left text-[11px]" id="mainTable">
-                    <thead class="bg-slate-900 text-white sticky top-0 z-10">
-                        <tr>
-                            <th class="p-3 text-center">REGISTROS</th>
-                            <th class="p-3">PLANTEL</th>
-                            <th class="p-3 text-center">SEM.</th>
-                            <th class="p-3">TURNO</th>
-                            <th class="p-3 text-center">GP</th>
-                            <th class="p-3">DOCENTE</th>
-                            <th class="p-3">MATERIA</th>
-                            <th class="p-3 text-center">PROM.</th>
-                            <th class="p-3 text-center">ATENCIÓN</th>
-                            <th class="p-3 text-center">SEMÁFORO</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody" class="divide-y divide-stone-100 italic"></tbody>
-                </table>
-            </div>
-        </div>
     </main>
 
     <script>
-        const DB_NAME = 'SemsRia_FinalV7';
-        const STORE_NAME = 'data';
-        // URL del archivo en el repositorio
         const GITHUB_DATA_URL = 'RIACarga.xlsx'; 
+        const DB_NAME = 'SemsRia_FinalV5';
+        const STORE_NAME = 'data';
         let db, dataGlobal = [], dataFiltered = [];
 
         const initDB = () => new Promise(res => {
@@ -115,17 +85,16 @@
             req.onsuccess = (e) => { db = e.target.result; res(); };
         });
 
-        const processAndSaveData = async (workbook) => {
+        async function processAndSaveData(arrayBuffer) {
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            
-            let processed = json.map(r => ({
+            const processed = json.map(r => ({
                 Plantel: r.plantel || 'N/A',
                 Semestre: r.semestre || '-',
                 Turno: r.turno == 1 ? 'Matutino' : 'Vespertino',
                 Grupo: r.grupo || '-',
                 Alumno: r.nombre || 'SIN NOMBRE',
                 Materia: r.materia || 'N/A',
-                Docente: r.nombre_doc || 'SIN DOCENTE',
                 Promedio: parseFloat(r.prom_uni) || 0,
                 Genero: r.genero == 1 ? 'Hombre' : 'Mujer',
                 Estatus: r.estatus || 'I',
@@ -133,26 +102,33 @@
                 Semaforo: getSemaforoTag(parseFloat(r.prom_uni) || 0)
             }));
 
-            const counts = {};
-            processed.forEach(item => {
-                const key = `${item.Docente}|${item.Grupo}|${item.Turno}|${item.Semestre}|${item.Materia}|${item.Plantel}`;
-                counts[key] = (counts[key] || 0) + 1;
-            });
-
-            processed = processed.map(item => ({
-                ...item,
-                Atencion: counts[`${item.Docente}|${item.Grupo}|${item.Turno}|${item.Semestre}|${item.Materia}|${item.Plantel}`]
-            }));
-
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             await store.clear();
             processed.forEach(item => store.add(item));
-            tx.oncomplete = () => {
+            
+            return new Promise(resolve => {
+                tx.oncomplete = () => {
+                    document.getElementById('loader').style.display = 'none';
+                    location.reload();
+                    resolve();
+                };
+            });
+        }
+
+        async function loadDataFromSource() {
+            try {
+                document.getElementById('loader').style.display = 'flex';
+                document.getElementById('loader-text').innerText = "Sincronizando...";
+                const response = await fetch(GITHUB_DATA_URL);
+                if (!response.ok) throw new Error("No se encontró el archivo");
+                const buffer = await response.arrayBuffer();
+                await processAndSaveData(buffer);
+            } catch (err) {
+                console.error(err);
                 document.getElementById('loader').style.display = 'none';
-                location.reload();
-            };
-        };
+            }
+        }
 
         document.getElementById('fileInput').onchange = (e) => {
             const file = e.target.files[0];
@@ -160,10 +136,9 @@
             document.getElementById('loader').style.display = 'flex';
             const reader = new FileReader();
             reader.onload = async (evt) => {
-                const workbook = XLSX.read(evt.target.result, { type: 'binary', codepage: 65001 });
-                await processAndSaveData(workbook);
+                await processAndSaveData(evt.target.result);
             };
-            reader.readAsBinaryString(file);
+            reader.readAsArrayBuffer(file);
         };
 
         const getSemaforoTag = (p) => {
@@ -185,11 +160,11 @@
             const plantelesAvg = {};
             items.forEach(i => { if(!plantelesAvg[i.Plantel]) plantelesAvg[i.Plantel] = { sum:0, ct:0 }; plantelesAvg[i.Plantel].sum += i.Promedio; plantelesAvg[i.Plantel].ct++; });
             const ranking = Object.keys(plantelesAvg).map(k => ({ p: k, avg: plantelesAvg[k].sum / plantelesAvg[k].ct })).sort((a,b)=>b.avg - a.avg).slice(0, 10);
-            Plotly.newPlot('chart-ranking', [{ y: ranking.map(x=>x.p), x: ranking.map(x=>x.avg), type: 'bar', orientation: 'h', marker:{color:'#065f46'} }], { title: 'Promedio por Plantel', ...conf });
+            Plotly.newPlot('chart-ranking', [{ y: ranking.map(x=>x.p), x: ranking.map(x=>x.avg), type: 'bar', orientation: 'h', marker:{color:'#065f46'} }], { title: 'Ranking Planteles', ...conf });
 
             const r = { '0-4': 0, '4.1-6': 0, '6.1-8': 0, '>8': 0 };
             items.forEach(i => { if(i.Promedio <= 4) r['0-4']++; else if(i.Promedio <= 6) r['4.1-6']++; else if(i.Promedio <= 8) r['6.1-8']++; else r['>8']++; });
-            Plotly.newPlot('chart-rangos', [{ x: Object.keys(r), y: Object.values(r), type: 'bar', marker:{color:'#78350f'} }], { title: 'Distribución Promedios', ...conf });
+            Plotly.newPlot('chart-rangos', [{ x: Object.keys(r), y: Object.values(r), type: 'bar', marker:{color:'#78350f'} }], { title: 'Rangos Promedio', ...conf });
         };
 
         const fillSelect = (id, vals) => {
@@ -201,24 +176,23 @@
             const getU = (f) => [...new Set(dataGlobal.map(d => d[f]))].sort();
             fillSelect('f-plantel', getU('Plantel'));
             fillSelect('f-semestre', getU('Semestre'));
-            fillSelect('f-docente', getU('Docente'));
+            fillSelect('f-materia', getU('Materia'));
             fillSelect('f-turno', getU('Turno'));
             fillSelect('f-tipo', getU('Tipo'));
             fillSelect('f-sector', getU('Genero'));
         };
 
         const applyFilters = () => {
-            const selectors = ['f-plantel','f-semestre','f-docente','f-turno','f-tipo','f-sector','f-semaforo'].map(id => document.getElementById(id).value);
+            const selectors = ['f-plantel','f-semestre','f-materia','f-turno','f-tipo','f-sector','f-semaforo'].map(id => document.getElementById(id).value);
             dataFiltered = dataGlobal.filter(d => 
                 (selectors[0] === 'ALL' || d.Plantel === selectors[0]) &&
                 (selectors[1] === 'ALL' || d.Semestre == selectors[1]) &&
-                (selectors[2] === 'ALL' || d.Docente === selectors[2]) &&
+                (selectors[2] === 'ALL' || d.Materia === selectors[2]) &&
                 (selectors[3] === 'ALL' || d.Turno === selectors[3]) &&
                 (selectors[4] === 'ALL' || d.Tipo === selectors[4]) &&
                 (selectors[5] === 'ALL' || d.Genero === selectors[5]) &&
                 (selectors[6] === 'ALL' || d.Semaforo === selectors[6])
             );
-            renderTable(dataFiltered);
             updateStats(dataFiltered);
             renderCharts(dataFiltered);
         };
@@ -231,78 +205,17 @@
             document.getElementById('stat-promedio').innerText = avg.toFixed(1);
         };
 
-        const renderTable = (items) => {
-            document.getElementById('tableBody').innerHTML = items.slice(0, 1000).map((d, i) => `
-                <tr class="hover:bg-white transition-colors border-b">
-                    <td class="p-3 text-center font-bold text-slate-400 bg-slate-50 border-r">${i+1}</td>
-                    <td class="p-3 font-semibold text-slate-700">${d.Plantel}</td>
-                    <td class="p-3 text-center">${d.Semestre}</td>
-                    <td class="p-3 text-[10px] uppercase text-stone-500">${d.Turno}</td>
-                    <td class="p-3 text-center font-black text-amber-900">${d.Grupo}</td>
-                    <td class="p-3 font-bold text-slate-800">${d.Docente}</td>
-                    <td class="p-3 text-[10px] text-stone-500 leading-tight">${d.Materia}</td>
-                    <td class="p-3 text-center font-black ${d.Promedio < 6 ? 'text-red-600':'text-emerald-700'}">${d.Promedio.toFixed(1)}</td>
-                    <td class="p-3 text-center"><span class="badge-atencion">${d.Atencion}</span></td>
-                    <td class="p-3 text-center">
-                        <div class="inline-block w-3 h-3 rounded-full ${d.Semaforo === 'ROJO' ? 'bg-red-500' : d.Semaforo === 'AMARILLO' ? 'bg-yellow-400' : d.Semaforo === 'NARANJA' ? 'bg-orange-500' : 'bg-emerald-500'} shadow-sm"></div>
-                    </td>
-                </tr>
-            `).join('');
-        };
-
-        function exportToExcel() {
-            const worksheet = XLSX.utils.json_to_sheet(dataFiltered);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "DATA_RIA");
-            XLSX.writeFile(workbook, "RIA_Docentes_Atencion.xlsx");
-        }
-
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'mm', 'a4');
-            doc.setFontSize(16);
-            doc.text("REPORTE DE SEGUIMIENTO DOCENTE - RIA", 14, 15);
-            doc.setFontSize(10);
-            doc.text(`Registros analizados: ${dataFiltered.length}`, 14, 22);
-            
-            const tableRows = dataFiltered.slice(0, 50).map((d, i) => [
-                i+1, d.Plantel, d.Semestre, d.Turno, d.Grupo, d.Docente, d.Materia, d.Promedio.toFixed(1), d.Atencion, d.Semaforo
-            ]);
-
-            doc.autoTable({
-                head: [['ID', 'Plantel', 'Sem', 'Turno', 'GP', 'Docente', 'Materia', 'Prom', 'Aten', 'Semaforo']],
-                body: tableRows,
-                startY: 28,
-                styles: { fontSize: 7 }
-            });
-            doc.save("Reporte_Docentes_RIA.pdf");
-        }
-
-        const clearDatabase = () => { if(confirm("¿Deseas restablecer el panel y borrar los datos cargados?")) { indexedDB.deleteDatabase(DB_NAME); location.reload(); } };
+        const clearDatabase = () => { if(confirm("¿Limpiar base de datos local?")) { indexedDB.deleteDatabase(DB_NAME); location.reload(); } };
 
         window.onload = async () => {
             await initDB();
-            
-            // Intentar cargar datos de IndexedDB primero
-            db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
+            db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll().onsuccess = (e) => {
                 dataGlobal = e.target.result;
-                
-                // Si no hay datos, intentar descargar el archivo automáticamente
-                if (dataGlobal.length === 0) {
-                    document.getElementById('loader').style.display = 'flex';
-                    try {
-                        const response = await fetch(GITHUB_DATA_URL);
-                        if (!response.ok) throw new Error("Archivo no encontrado en el servidor");
-                        const arrayBuffer = await response.arrayBuffer();
-                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                        await processAndSaveData(workbook);
-                    } catch (err) {
-                        console.error("Error cargando archivo inicial:", err);
-                        document.getElementById('loader').style.display = 'none';
-                    }
-                } else {
+                if (dataGlobal.length > 0) { 
                     setupFilters(); 
                     applyFilters(); 
+                } else {
+                    loadDataFromSource();
                 }
             };
         };
